@@ -15,7 +15,7 @@ class ProgressPercentage:
         self._seen_so_far += bytes_amount
         self._tqdm.update(bytes_amount)
 
-def download_and_extract_s3_zip(bucket, s3_key, local_path, extract_to=None):
+def s3_download(bucket, s3_key, local_path, extract_to=None):
     """
     Downloads a file from S3 (with progress), and extracts if it's a zip.
     - Skips download if already present locally.

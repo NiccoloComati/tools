@@ -1,11 +1,9 @@
-# tools/setup.py
-
 from setuptools import setup, find_packages
 
 setup(
-    name="tools",
+    name="data_tools",                 # <- Python package name
     version="0.1",
-    packages=find_packages(),
+    packages=find_packages(),         # <- includes data_tools/
     install_requires=[
         "boto3",
         "tqdm"

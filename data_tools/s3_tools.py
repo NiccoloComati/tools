@@ -15,46 +15,52 @@ class ProgressPercentage:
         self._seen_so_far += bytes_amount
         self._tqdm.update(bytes_amount)
 
-def s3_download(bucket, s3_key, local_path, extract_to=None):
+def s3_download(bucket, s3_key, local_path=None, extract_to=None):
     """
     Downloads a file from S3 (with progress), and extracts if it's a zip.
-    - Skips download if already present locally.
-    - Only extracts if the file is a ZIP and extract_to is given.
-
-    Args:
-        bucket (str): S3 bucket name
-        s3_key (str): Path in bucket
-        local_path (str): Where to save locally
-        extract_to (str): Where to extract (if file is a zip)
+    - If local_path not given, saves in current dir mirroring S3 structure.
+    - If extract_to not given and file is zip, extracts next to zip with same name.
+    - Skips download if file already exists.
+    - Skips extraction if already done.
     """
-    # Download if needed
+    # Set local_path if not provided
+    if local_path is None:
+        local_path = os.path.join(os.getcwd(), s3_key.replace("/", os.sep))
+        print(f"[Info] local_path not provided — using: {local_path}")
+
+    # Set extract_to if not provided but file is a zip
+    if extract_to is None and local_path.endswith(".zip"):
+        extract_to = os.path.splitext(local_path)[0]  # Same name, no .zip
+        print(f"[Info] extract_to not provided — will extract to: {extract_to}")
+
+    # Download if file doesn't exist
     if os.path.exists(local_path):
-        print(f"File already exists: {local_path}")
+        print(f"[Skip] File already exists: {local_path}")
     else:
         try:
-            print(f"Downloading {s3_key} from {bucket}...")
+            print(f"[Download] {s3_key} from {bucket}")
             s3 = boto3.client("s3")
             os.makedirs(os.path.dirname(local_path), exist_ok=True)
             filesize = s3.head_object(Bucket=bucket, Key=s3_key)['ContentLength']
             s3.download_file(bucket, s3_key, local_path, Callback=ProgressPercentage(s3_key, filesize))
-            print("Download complete.")
+            print("[Done] Download complete.")
         except NoCredentialsError:
-            print("ERROR: AWS credentials not found.")
+            print("❌ AWS credentials not found.")
             return
         except ClientError as e:
-            print(f"ERROR: S3 error: {e}")
+            print(f"❌ S3 error: {e}")
             return
 
-    # Only extract if it’s a zip and user asked to extract
+    # Extraction logic
     if extract_to:
         if zipfile.is_zipfile(local_path):
             if os.path.exists(extract_to) and os.listdir(extract_to):
-                print(f"Already extracted to: {extract_to}")
+                print(f"[Skip] Already extracted to: {extract_to}")
             else:
-                print(f"Extracting to: {extract_to}")
+                print(f"[Extract] Extracting to: {extract_to}")
                 with zipfile.ZipFile(local_path, 'r') as zip_ref:
                     os.makedirs(extract_to, exist_ok=True)
                     zip_ref.extractall(extract_to)
-                print("Extraction complete.")
+                print("[Done] Extraction complete.")
         else:
-            print(f"File is not a ZIP archive — skipping extraction.")
+            print(f"[Skip] File is not a ZIP archive — no extraction done.")

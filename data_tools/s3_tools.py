@@ -2,7 +2,7 @@ import os
 import zipfile
 import boto3
 
-def process_zip_files(filenames, bucket, data_dir="data"):
+def s3_download(filenames, bucket, data_dir="data"):
     if isinstance(filenames, str):
         filenames = [filenames]
     
